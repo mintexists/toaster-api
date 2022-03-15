@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"text/template"
 
 	"github.com/joho/godotenv"
@@ -37,7 +38,7 @@ func imageHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 
 	number, err := strconv.Atoi(ps.ByName("id"))
 	if err != nil {
-		if ps.ByName("id") == "random" {
+		if strings.Split(ps.ByName("id"), "/")[0] == "random" {
 			for k, v := range noCacheHeaders {
 				w.Header().Set(k, v)
 			}
@@ -89,7 +90,9 @@ func embedImage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	number, err := strconv.Atoi(ps.ByName("id"))
 	if err != nil {
-		if ps.ByName("id") == "random" {
+		fmt.Println("Nya")
+		fmt.Println(strings.Split(ps.ByName("id"), "/")[0])
+		if strings.Split(ps.ByName("id"), "/")[0] == "random" {
 			for k, v := range noCacheHeaders {
 				w.Header().Set(k, v)
 			}
@@ -131,6 +134,8 @@ func main() {
 
 	router := httprouter.New()
 	router.GET("/embed/:id", embedImage)
+	router.GET("/embed/:id/*_", embedImage)
+	router.GET("/img/:id/*_", imageHandler)
 	router.GET("/img/:id", imageHandler)
 	router.GET("/", api)
 	fmt.Println("Listening on port", os.Getenv("PORT"))
