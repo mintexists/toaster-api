@@ -10,8 +10,10 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"text/template"
 
 	"github.com/joho/godotenv"
+	"github.com/julienschmidt/httprouter"
 )
 
 var noCacheHeaders = map[string]string{
@@ -21,7 +23,7 @@ var noCacheHeaders = map[string]string{
 	"X-Accel-Expires": "0",
 }
 
-func imageHandler(w http.ResponseWriter, r *http.Request) {
+func imageHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	regex, err := regexp.Compile("[0-9]+")
 	if err != nil {
@@ -33,18 +35,18 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	number, err := strconv.Atoi(regex.FindString(r.URL.Path))
+	number, err := strconv.Atoi(ps.ByName("id"))
 	if err != nil {
-		if r.URL.Path == "/" {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusCreated)
-			// json.NewEncoder(w).Encode({'info': 'Toaster Image API', 'max': %d})
-			fmt.Fprintf(w, "{'info': 'Toaster Image API', 'max': %d}", len(paths)-1)
+		if ps.ByName("id") == "random" {
+			for k, v := range noCacheHeaders {
+				w.Header().Set(k, v)
+			}
+			number = rand.Intn(len(paths) - 1)
 		} else {
 			w.WriteHeader(http.StatusNotFound)
 			fmt.Fprintf(w, "404 Not Found")
+			return
 		}
-		return
 	}
 
 	number = number % len(paths)
@@ -66,10 +68,18 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, paths[number])
 }
 
-func randomImage(w http.ResponseWriter, r *http.Request) {
+type EmbedData struct {
+	PagePath string
+	ID       int
+	URL      string
+}
 
-	for k, v := range noCacheHeaders {
-		w.Header().Set(k, v)
+func embedImage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	fmt.Println(r.URL.Scheme)
+	tmpl, err := template.ParseFiles("embed.html")
+	if err != nil {
+		log.Println(err)
+		return
 	}
 
 	paths, err := filepath.Glob("./Toasters/Toasters/*")
@@ -77,28 +87,40 @@ func randomImage(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	regex, err := regexp.Compile("[0-9]+")
+	number, err := strconv.Atoi(ps.ByName("id"))
 	if err != nil {
-		fmt.Println(err)
+		if ps.ByName("id") == "random" {
+			for k, v := range noCacheHeaders {
+				w.Header().Set(k, v)
+			}
+			number = rand.Intn(len(paths) - 1)
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprintf(w, "404 Not Found")
+			return
+		}
 	}
 
-	sort.Slice(paths, func(i, j int) bool {
-		a, err := strconv.Atoi(regex.FindString(paths[i]))
-		if err != nil {
-			panic(err)
-		}
-		b, err := strconv.Atoi(regex.FindString(paths[j]))
-		if err != nil {
-			panic(err)
-		}
-		return a < b
-	})
+	number = number % len(paths)
+	pagePath := fmt.Sprintf("http://%s/img/%d", r.Host, number)
 
-	number := rand.Intn(len(paths) - 1)
+	page := EmbedData{
+		PagePath: pagePath,
+		ID:       number,
+		URL:      pagePath,
+	}
 
-	fmt.Println(number, paths[number])
+	tmpl.Execute(w, page)
+}
 
-	http.ServeFile(w, r, paths[number])
+func api(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	paths, err := filepath.Glob("./Toasters/Toasters/*")
+	if err != nil {
+		panic(err)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	fmt.Fprintf(w, "{'info': 'Toaster Image API', 'max': %d}", len(paths)-1)
 }
 
 func main() {
@@ -107,8 +129,10 @@ func main() {
 		log.Fatalf("Some error occured. Err: %s", err)
 	}
 
-	http.HandleFunc("/", imageHandler)
-	http.HandleFunc("/random", randomImage)
+	router := httprouter.New()
+	router.GET("/embed/:id", embedImage)
+	router.GET("/img/:id", imageHandler)
+	router.GET("/", api)
 	fmt.Println("Listening on port", os.Getenv("PORT"))
-	http.ListenAndServe(os.Getenv("PORT"), nil)
+	http.ListenAndServe(os.Getenv("PORT"), router)
 }
