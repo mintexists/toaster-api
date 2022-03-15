@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
@@ -64,8 +66,7 @@ func imageHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 		return a < b
 	})
 
-	fmt.Println(number, paths[number])
-
+	go addStats()
 	http.ServeFile(w, r, paths[number])
 }
 
@@ -113,6 +114,7 @@ func embedImage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		URL:      pagePath,
 	}
 
+	go addStats()
 	tmpl.Execute(w, page)
 }
 
@@ -121,9 +123,47 @@ func api(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	if err != nil {
 		panic(err)
 	}
+
+	stats := getStats()
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintf(w, "{'info': 'Toaster Image API', 'max': %d}", len(paths)-1)
+	fmt.Fprintf(w, "{'info': 'Toaster Image API. Routes are /img/[number], /img/random, /embed/[number], /img/random. Add /[anything] to the end of the URL to avoid cache issues', 'max': %d, 'hits': '%d'}", len(paths)-1, stats.Hits)
+	go addStats()
+}
+
+func getStats() Stats {
+	jsonFile, err := os.Open("stats.json")
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer jsonFile.Close()
+
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+
+	var stats Stats
+	json.Unmarshal(byteValue, &stats)
+	return stats
+}
+
+func addStats() {
+	jsonFile, err := os.Open("stats.json")
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer jsonFile.Close()
+
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+
+	var stats Stats
+	json.Unmarshal(byteValue, &stats)
+	stats.Hits++
+	file, _ := json.MarshalIndent(stats, "", " ")
+	ioutil.WriteFile("stats.json", file, 0644)
+}
+
+type Stats struct {
+	Hits int `json:"hits"`
 }
 
 func main() {
