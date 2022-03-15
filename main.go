@@ -91,8 +91,6 @@ func embedImage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	number, err := strconv.Atoi(ps.ByName("id"))
 	if err != nil {
-		fmt.Println("Nya")
-		fmt.Println(strings.Split(ps.ByName("id"), "/")[0])
 		if strings.Split(ps.ByName("id"), "/")[0] == "random" {
 			for k, v := range noCacheHeaders {
 				w.Header().Set(k, v)
@@ -128,7 +126,7 @@ func api(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintf(w, "{'info': 'Toaster Image API. Routes are /img/[number], /img/random, /embed/[number], /img/random. Add /[anything] to the end of the URL to avoid cache issues', 'max': %d, 'hits': '%d'}", len(paths)-1, stats.Hits)
+	fmt.Fprintf(w, "{\"info\": \"Toaster Image API. Routes are /img/[number], /img/random, /embed/[number], /img/random. Add /[anything] to the end of the URL to avoid cache issues\", \"max\": %d, \"hits\": %d}", len(paths)-1, stats.Hits)
 	go addStats()
 }
 
