@@ -126,7 +126,7 @@ func api(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintf(w, "{\"info\": \"Toaster Image API. Routes are /img/[number], /img/random, /embed/[number], /img/random. Add /[anything] to the end of the URL to avoid cache issues\", \"max\": %d, \"hits\": %d}", len(paths)-1, stats.Hits)
+	fmt.Fprintf(w, "{\"info\": \"Toaster Image API. Routes are /img/[number], /img/random, /pic/[number], /pic/random, /embed/[number], /img/random. Add /[anything] to the end of the URL to avoid cache issues\", \"max\": %d, \"hits\": %d}", len(paths)-1, stats.Hits)
 	go addStats()
 }
 
@@ -175,6 +175,8 @@ func main() {
 	router.GET("/embed/:id/*_", embedImage)
 	router.GET("/img/:id/*_", imageHandler)
 	router.GET("/img/:id", imageHandler)
+	router.GET("/pic/:id/*_", imageHandler)
+	router.GET("/pic/:id", imageHandler)
 	router.GET("/", api)
 	fmt.Println("Listening on port", os.Getenv("PORT"))
 	http.ListenAndServe(os.Getenv("PORT"), router)
