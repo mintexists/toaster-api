@@ -33,7 +33,7 @@ func imageHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 		fmt.Println(err)
 	}
 
-	paths, err := filepath.Glob("./Toasters/Toasters/*")
+	paths, err := os.ReadDir("./Toasters/Toasters/")
 	if err != nil {
 		panic(err)
 	}
@@ -55,11 +55,11 @@ func imageHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 	number = number % len(paths)
 
 	sort.Slice(paths, func(i, j int) bool {
-		a, err := strconv.Atoi(regex.FindString(paths[i]))
+		a, err := strconv.Atoi(regex.FindString(paths[i].Name()))
 		if err != nil {
 			panic(err)
 		}
-		b, err := strconv.Atoi(regex.FindString(paths[j]))
+		b, err := strconv.Atoi(regex.FindString(paths[j].Name()))
 		if err != nil {
 			panic(err)
 		}
@@ -67,7 +67,7 @@ func imageHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 	})
 
 	go addStats()
-	http.ServeFile(w, r, paths[number])
+	http.ServeFile(w, r, filepath.Join("./Toasters/Toasters/", paths[number].Name()))
 }
 
 type EmbedData struct {
@@ -84,7 +84,7 @@ func embedImage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
-	paths, err := filepath.Glob("./Toasters/Toasters/*")
+	paths, err := os.ReadDir("./Toasters/Toasters/")
 	if err != nil {
 		panic(err)
 	}
