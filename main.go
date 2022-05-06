@@ -16,6 +16,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
 )
 
@@ -32,6 +33,12 @@ func main() {
 	r.Use(middleware.Logger)
 
 	r.Use(middleware.RedirectSlashes)
+
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins: []string{"https://*", "http://*"},
+		AllowedMethods: []string{"GET"},
+		AllowedHeaders: []string{"*"},
+	}))
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		type Route struct {
